@@ -9,10 +9,6 @@
 
 #include <QtGui>
 
-#define RED		16
-#define GREEN		8
-#define BLUE		0
-
 using namespace std;
 using namespace boost;
 
