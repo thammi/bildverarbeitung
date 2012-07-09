@@ -1,5 +1,5 @@
 #include <iostream>
-#include <stdint.h>
+#include <vector>
 
 #include <boost/foreach.hpp>
 
@@ -148,10 +148,17 @@ static void slow_mean(QImage& img, const int rad) {
 
 typedef void (*mean_fun)(QImage& img, const int rad);
 
+struct fun_struct {
+	mean_fun fun;
+	string prefix;
+
+	fun_struct() : fun(NULL) {}
+	fun_struct(mean_fun fun, const char* prefix) : fun(fun), prefix(prefix) {}
+};
+
 int main(int argc, char *argv[]) {
-	mean_fun fun = fast_mean;
+	vector<fun_struct> methods;
 	int radius = 1;
-	string prefix = "integral_";
 
 	po::options_description desc("Allowed options");
 	desc.add_options()
@@ -174,27 +181,38 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	if(vm.count("slow")) {
-		fun = slow_mean;
-		prefix = "naive_";
-	}
-
 	if(vm.count("radius")) {
 		radius = vm["radius"].as<int>();
 	}
 
+	if(vm.count("slow")) {
+		methods.push_back(fun_struct(slow_mean, "naive_"));
+	}
+
+	if(methods.empty() || vm.count("fast")) {
+		methods.push_back(fun_struct(fast_mean, "integral_"));
+	}
+
 	if (vm.count("input"))
 	{
+		QElapsedTimer timer;
+
 		BOOST_FOREACH(const string& file, vm["input"].as< vector<string> >()) {
 			cout << "Processing " << file << " with radius " << radius << endl;
 
-			QImage img(file.c_str());
+			foreach(const fun_struct& method, methods) {
+				QImage img(file.c_str());
 
-			fun(img, radius);
+				timer.start();
 
-			string out_name(prefix + file);
-			img.save(out_name.c_str());
-			cout << "Output written to " << out_name << endl;
+				method.fun(img, radius);
+
+				cout << "Processing took " << (timer.elapsed() / 1000.) << " seconds" << endl;
+
+				string out_name(method.prefix + file);
+				img.save(out_name.c_str());
+				cout << "Output written to " << out_name << endl;
+			}
 		}
 	} else {
 		cout << "No input files specified." << endl << "Hint: Try '-h' for help." << endl;
