@@ -90,6 +90,20 @@ public:
 		return color;
 	}
 
+	QRgb fastMean(const int x, const int y, const int rad=1) {
+		const int w = rad * 2 + 1;
+		const int div = w * w;
+
+		QRgb color = 0xff;
+
+		for(int n = 2; n >= 0; --n) {
+			color <<= 8;
+			color |= (get(x + rad, y + rad, n) - get(x - rad - 1, y + rad, n) - get(x + rad, y - rad - 1, n) + get(x - rad - 1, y - rad - 1, n)) / div;
+		}
+
+		return color;
+	}
+
 protected:
 	inline int get(const int x, const int y, const int n) {
 		return data[n][x + y * width];
@@ -191,6 +205,7 @@ int main(int argc, char *argv[]) {
 		("radius,r", po::value<int>(), "set filter mask radius")
 		("slow,s", "use the slow code path")
 		("fast,f", "use the fast code path (default)")
+		("optimized,o", "use the optimized code path")
 		("input", po::value< vector<string> >(), "input file")
 		;
 
@@ -212,6 +227,10 @@ int main(int argc, char *argv[]) {
 
 	if(vm.count("slow")) {
 		methods.push_back(fun_struct(slow_mean, "naive_"));
+	}
+
+	if(vm.count("optimized")) {
+		methods.push_back(fun_struct(real_fast_mean, "optimized_"));
 	}
 
 	if(methods.empty() || vm.count("fast")) {
