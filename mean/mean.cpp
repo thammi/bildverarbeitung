@@ -50,8 +50,8 @@ public:
 			}
 		}
 
-		for(int x = 1; x < width; ++x) {
-			for(int y = 1; y < height; ++y) {
+		for(int y = 1; y < height; ++y) {
+			for(int x = 1; x < width; ++x) {
 				QRgb pixel = img.pixel(x, y);
 
 				for(int n = 0; n < 3; ++n) {
@@ -104,16 +104,41 @@ private:
 	int* data[3];
 };
 
+static void real_fast_mean(QImage& img, const int rad) {
+	cout << "Using the really fast code path" << endl;
+
+	MeanChannel mean(img);
+
+	const int box_x_start = rad + 1;
+	const int box_x_end = img.width() - rad;
+	const int box_y_start = rad + 1;
+	const int box_y_end = img.height() - rad;
+
+	for(int y = 0; y < img.height(); ++y) {
+		for(int x = 0; x < img.width(); ++x) {
+			if(x == box_x_start && y > box_y_start && y < box_y_end) {
+				x = box_x_end;
+			}
+
+			img.setPixel(x, y, mean.mean(x, y, rad));
+		}
+	}
+
+	for(int y = box_y_start; y < box_y_end; ++y) {
+		for(int x = box_x_start; x < box_x_end; ++x) {
+			img.setPixel(x, y, mean.fastMean(x, y, rad));
+		}
+	}
+}
+
 static void fast_mean(QImage& img, const int rad) {
 	cout << "Using the faster code path" << endl;
 
 	MeanChannel mean(img);
 
-	for(int x = 0; x < img.width(); ++x) {
-		for(int y = 0; y < img.height(); ++y) {
-			//cout << red.mean(x, y) << endl;
+	for(int y = 0; y < img.height(); ++y) {
+		for(int x = 0; x < img.width(); ++x) {
 			img.setPixel(x, y, mean.mean(x, y, rad));
-			//img.setPixel(x, y, qRgb(0,0,0));
 		}
 	}
 }
@@ -123,13 +148,13 @@ static void slow_mean(QImage& img, const int rad) {
 
 	QImage tmp(img);
 
-	for(int x = 0; x < img.width(); ++x) {
-		for(int y = 0; y < img.height(); ++y) {
+	for(int y = 0; y < img.height(); ++y) {
+		for(int x = 0; x < img.width(); ++x) {
 			int sum[3] = {0, 0, 0};
 			int count = 0;
 
-			for(int ax = max(0, x - rad); ax <= min(img.width() - 1, x + rad); ++ax) {
-				for(int ay = max(0, y - rad); ay <= min(img.height() - 1, y + rad); ++ay) {
+			for(int ay = max(0, y - rad); ay <= min(img.height() - 1, y + rad); ++ay) {
+				for(int ax = max(0, x - rad); ax <= min(img.width() - 1, x + rad); ++ax) {
 					QRgb pixel = tmp.pixel(ax, ay);
 
 					for(int n = 0; n < 3; ++n) {
