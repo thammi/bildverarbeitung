@@ -9,8 +9,6 @@ INCLUDEPATH += .
 
 ;CONFIG += debug
 
-;QMAKE_CXXFLAGS += -std=c++0x
-
 QMAKE_CXXFLAGS_RELEASE -= -O2
 QMAKE_CXXFLAGS += -O3
 LIBS += -lboost_program_options

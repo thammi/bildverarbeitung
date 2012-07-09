@@ -62,8 +62,12 @@ public:
 	}
 
 	QRgb mean(const int x, const int y, const int rad=1) {
-		const int w = rad * 2 + 1;
-		const int div = w * w;
+		const int start_x = max(0, x - rad);
+		const int end_x = min(width - 1, x + rad);
+		const int start_y = max(0, y - rad);
+		const int end_y = min(height - 1, y + rad);
+
+		const int div = (end_x - start_x + 1) * (end_y - start_y + 1);
 
 		QRgb color = 0xff;
 
@@ -72,14 +76,14 @@ public:
 
 			if(x <= rad) {
 				if(y <= rad) {
-					color |= get(x + rad, y + rad, n) / div;
+					color |= get(end_x, end_y, n) / div;
 				} else {
-					color |= (get(x + rad, y + rad, n) - get(x + rad, y - rad - 1, n)) / div;
+					color |= (get(end_x, end_y, n) - get(end_x, start_y - 1, n)) / div;
 				}
 			} else if(y <= rad) {
-				color |= (get(x + rad, y + rad, n) - get(x - rad - 1, y + rad, n)) / div;
+				color |= (get(end_x, end_y, n) - get(start_x - 1, end_y, n)) / div;
 			} else {
-				color |= (get(x + rad, y + rad, n) - get(x - rad - 1, y + rad, n) - get(x + rad, y - rad - 1, n) + get(x - rad - 1, y - rad - 1, n)) / div;
+				color |= (get(end_x, end_y, n) - get(start_x - 1, end_y, n) - get(end_x, start_y - 1, n) + get(start_x - 1, start_y - 1, n)) / div;
 			}
 		}
 
@@ -100,43 +104,43 @@ private:
 	int* data[3];
 };
 
-static void fast_mean(QImage& img, const int rad=1) {
+static void fast_mean(QImage& img, const int rad) {
 	cout << "Using the faster code path" << endl;
 
 	MeanChannel mean(img);
 
-	for(int x = rad; x < img.width() - rad; ++x) {
-		for(int y = rad; y < img.height() - rad; ++y) {
+	for(int x = 0; x < img.width(); ++x) {
+		for(int y = 0; y < img.height(); ++y) {
 			//cout << red.mean(x, y) << endl;
-			img.setPixel(x, y, mean.mean(x, y));
+			img.setPixel(x, y, mean.mean(x, y, rad));
 			//img.setPixel(x, y, qRgb(0,0,0));
 		}
 	}
 }
 
-static void slow_mean(QImage& img, const int rad=1) {
+static void slow_mean(QImage& img, const int rad) {
 	cout << "Using the slower code path" << endl;
 
 	QImage tmp(img);
 
-	const int w = rad * 2 + 1;
-	const int div = w * w;
-
-	for(int x = rad; x < img.width() - rad; ++x) {
-		for(int y = rad; y < img.height() - rad; ++y) {
+	for(int x = 0; x < img.width(); ++x) {
+		for(int y = 0; y < img.height(); ++y) {
 			int sum[3] = {0, 0, 0};
+			int count = 0;
 
-			for(int ax = x - rad; ax <= x + rad; ++ax) {
-				for(int ay = y - rad; ay <= y + rad; ++ay) {
+			for(int ax = max(0, x - rad); ax <= min(img.width() - 1, x + rad); ++ax) {
+				for(int ay = max(0, y - rad); ay <= min(img.height() - 1, y + rad); ++ay) {
 					QRgb pixel = tmp.pixel(ax, ay);
 
 					for(int n = 0; n < 3; ++n) {
 						sum[n] += pixel >> (n * 8) & 0xff;
 					}
+
+					++count;
 				}
 			}
 
-			const QRgb color = 0xff000000 | ((sum[2] / div) << 16) | ((sum[1] / div) << 8) | (sum[0] / div);
+			const QRgb color = 0xff000000 | ((sum[2] / count) << 16) | ((sum[1] / count) << 8) | (sum[0] / count);
 			img.setPixel(x, y, color);
 		}
 	}
